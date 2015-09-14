@@ -1,3 +1,14 @@
+This fork/branch is a hack to allow sdl2-mixer to build and install on Windows. There's a [bug involving GHC, Windows, and Template Haskell](https://github.com/haskell-game/sdl2/issues/41#issuecomment-73564593) so the TH code has been removed and replaced with its own output. The generated code is dumped from GHC's `-ddump-splices -ddump-to-file` flags.
+
+To install:
+
+```bash
+set PKG_CONFIG_PATH=%PATH_TO_SDL2_MIXER_MINGW_DEVEL%\lib\pkgconfig;%PATH_TO_SDL2_MINGW_DEVEL%\lib\pkgconfig
+set PATH=%PATH_TO_SDL2_MIXER_MINGW_DEVEL%\bin;%PATH_TO_SDL2_MINGW_DEVEL\bin;%PATH%
+cabal install --extra-lib-dirs=%PATH_TO_SDL2_MIXER_MINGW_DEVEL%\lib --extra-include-dirs=%PATH_TO_SDL2_MIXER_MINGW_DEVEL%\include\SDL2
+```
+
+
 # sdl2-mixer
 
 [![Build Status](https://travis-ci.org/sbidin/sdl2-mixer.svg?branch=master)](https://travis-ci.org/sbidin/sdl2-mixer)

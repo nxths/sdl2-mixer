@@ -14,7 +14,7 @@ documentation.
 
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 
 module SDL.Raw.Mixer
   (
@@ -167,6 +167,7 @@ module SDL.Raw.Mixer
 
 #include "SDL_mixer.h"
 
+import Control.Monad.IO.Class
 import Data.Int         (Int16)
 import Data.Word        (Word8, Word16, Word32)
 import Foreign.C.String (CString)
@@ -174,13 +175,15 @@ import Foreign.C.Types  (CInt(..), CDouble(..))
 import Foreign.Ptr      (Ptr, FunPtr)
 import Foreign.Storable (Storable(..))
 import Prelude   hiding (init)
-import SDL.Raw.Helper   (liftF)
 import SDL.Raw.Types    (RWops(..), Version(..))
 
 -- 4.1 General
 
-liftF "getVersion" "Mix_Linked_Version"
-  [t|IO (Ptr Version)|]
+
+foreign import ccall safe "static Mix_Linked_Version" getVersion' :: IO (Ptr Version)
+{-# INLINE getVersion #-}
+getVersion :: forall m_a67p. MonadIO m_a67p => m_a67p (Ptr Version)
+getVersion = liftIO getVersion'
 
 pattern SDL_MIXER_MAJOR_VERSION = (#const SDL_MIXER_MAJOR_VERSION)
 pattern SDL_MIXER_MINOR_VERSION = (#const SDL_MIXER_MINOR_VERSION)
@@ -188,8 +191,10 @@ pattern SDL_MIXER_PATCHLEVEL    = (#const SDL_MIXER_PATCHLEVEL)
 
 type InitFlag = CInt
 
-liftF "init" "Mix_Init"
-  [t|InitFlag -> IO CInt|]
+
+foreign import ccall safe "static Mix_Init" init' :: InitFlag -> IO CInt
+{-# INLINE init #-}
+init x_a5Vq = liftIO (init' x_a5Vq)
 
 pattern INIT_FLAC       = (#const MIX_INIT_FLAC)
 pattern INIT_MOD        = (#const MIX_INIT_MOD)
@@ -198,16 +203,21 @@ pattern INIT_MP3        = (#const MIX_INIT_MP3)
 pattern INIT_OGG        = (#const MIX_INIT_OGG)
 pattern INIT_FLUIDSYNTH = (#const MIX_INIT_FLUIDSYNTH)
 
-liftF "quit" "Mix_Quit"
-  [t|IO ()|]
-
 type Format = Word16
+
+
+foreign import ccall safe "static Mix_Quit" quit' :: IO ()
+{-# INLINE quit #-}
+quit :: forall m_a684. MonadIO m_a684 => m_a684 ()
+quit = liftIO quit'
 
 pattern DEFAULT_FREQUENCY = (#const MIX_DEFAULT_FREQUENCY)
 pattern DEFAULT_CHANNELS  = (#const MIX_DEFAULT_CHANNELS)
 
-liftF "openAudio" "Mix_OpenAudio"
-  [t|CInt -> Format -> CInt -> CInt -> IO CInt|]
+
+foreign import ccall safe "static Mix_OpenAudio" openAudio' :: CInt -> Format -> CInt -> CInt -> IO CInt
+{-# INLINE openAudio #-}
+openAudio x_a69c x_a69d x_a69e x_a69f = liftIO (openAudio' x_a69c x_a69d x_a69e x_a69f)
 
 pattern AUDIO_U8       = (#const AUDIO_U8)
 pattern AUDIO_S8       = (#const AUDIO_S8)
@@ -221,19 +231,27 @@ pattern AUDIO_U16SYS   = (#const AUDIO_U16SYS)
 pattern AUDIO_S16SYS   = (#const AUDIO_S16SYS)
 pattern DEFAULT_FORMAT = (#const MIX_DEFAULT_FORMAT)
 
-liftF "closeAudio" "Mix_CloseAudio"
-  [t|IO ()|]
 
-liftF "querySpec" "Mix_QuerySpec"
-  [t|Ptr CInt -> Ptr Format -> Ptr CInt -> IO CInt|]
+foreign import ccall safe "static Mix_CloseAudio" closeAudio' :: IO ()
+{-# INLINE closeAudio #-}
+closeAudio :: forall m_a69W. MonadIO m_a69W => m_a69W ()
+closeAudio = liftIO closeAudio'
+
+
+foreign import ccall safe "static Mix_QuerySpec" querySpec' :: Ptr CInt -> Ptr Format -> Ptr CInt -> IO CInt
+{-# INLINE querySpec #-}
+querySpec x_a6bf x_a6bg x_a6bh = liftIO (querySpec' x_a6bf x_a6bg x_a6bh)
 
 -- 4.2 Samples
 
-liftF "getNumChunkDecoders" "Mix_GetNumChunkDecoders"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_GetNumChunkDecoders" getNumChunkDecoders' :: IO CInt
+{-# INLINE getNumChunkDecoders #-}
+getNumChunkDecoders :: forall m_a6c3. MonadIO m_a6c3 => m_a6c3 CInt
+getNumChunkDecoders = liftIO getNumChunkDecoders'
 
-liftF "getChunkDecoder" "Mix_GetChunkDecoder"
-  [t|CInt -> IO CString|]
+foreign import ccall safe "static Mix_GetChunkDecoder" getChunkDecoder' :: CInt -> IO CString
+{-# INLINE getChunkDecoder #-}
+getChunkDecoder x_a6cQ = liftIO (getChunkDecoder' x_a6cQ)
 
 data Chunk = Chunk
   { chunkAllocated :: CInt
@@ -259,76 +277,96 @@ instance Storable Chunk where
     (#poke Mix_Chunk, alen)      ptr chunkAlen
     (#poke Mix_Chunk, volume)    ptr chunkVolume
 
-liftF "loadWAV" "Mix_LoadWAV_helper"
-  [t|CString -> IO (Ptr Chunk)|]
+foreign import ccall safe "static Mix_LoadWAV_helper" loadWAV' :: CString -> IO (Ptr Chunk)
+{-# INLINE loadWAV #-}
+loadWAV x_a6dP = liftIO (loadWAV' x_a6dP)
 
-liftF "loadWAV_RW" "Mix_LoadWAV_RW"
-  [t|Ptr RWops -> CInt -> IO (Ptr Chunk)|]
+foreign import ccall safe "static Mix_LoadWAV_RW" loadWAV_RW' :: Ptr RWops -> CInt -> IO (Ptr Chunk)
+{-# INLINE loadWAV_RW #-}
+loadWAV_RW x_a6eX x_a6eY = liftIO (loadWAV_RW' x_a6eX x_a6eY)
 
-liftF "quickLoadWAV" "Mix_QuickLoad_WAV"
-  [t|Ptr Word8 -> IO (Ptr Chunk)|]
+foreign import ccall safe "static Mix_QuickLoad_WAV" quickLoadWAV' :: Ptr Word8 -> IO (Ptr Chunk)
+{-# INLINE quickLoadWAV #-}
+quickLoadWAV x_a6g1 = liftIO (quickLoadWAV' x_a6g1)
 
-liftF "quickLoadRaw" "Mix_QuickLoad_RAW"
-  [t|Ptr Word8 -> IO (Ptr Chunk)|]
+foreign import ccall safe "static Mix_QuickLoad_RAW" quickLoadRaw' :: Ptr Word8 -> IO (Ptr Chunk)
+{-# INLINE quickLoadRaw #-}
+quickLoadRaw x_a6h3 = liftIO (quickLoadRaw' x_a6h3)
 
 pattern MAX_VOLUME = (#const MIX_MAX_VOLUME)
 
-liftF "volumeChunk" "Mix_VolumeChunk"
-  [t|Ptr Chunk -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_VolumeChunk" volumeChunk' :: Ptr Chunk -> CInt -> IO CInt
+{-# INLINE volumeChunk #-}
+volumeChunk x_a6i6 x_a6i7 = liftIO (volumeChunk' x_a6i6 x_a6i7)
 
-liftF "freeChunk" "Mix_FreeChunk"
-  [t|Ptr Chunk -> IO ()|]
+foreign import ccall safe "static Mix_FreeChunk" freeChunk' :: Ptr Chunk -> IO ()
+{-# INLINE freeChunk #-}
+freeChunk x_a6j0 = liftIO (freeChunk' x_a6j0)
 
 -- 4.3 Channels
 
-liftF "allocateChannels" "Mix_AllocateChannels"
-  [t|CInt -> IO CInt|]
+foreign import ccall safe "static Mix_AllocateChannels" allocateChannels' :: CInt -> IO CInt
+{-# INLINE allocateChannels #-}
+allocateChannels x_a6jP = liftIO (allocateChannels' x_a6jP)
 
 pattern CHANNELS = (#const MIX_CHANNELS)
 
 type Channel = CInt
 
-liftF "volume" "Mix_Volume"
-  [t|Channel -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_Volume" volume' :: Channel -> CInt -> IO CInt
+{-# INLINE volume #-}
+volume x_a6kK x_a6kL = liftIO (volume' x_a6kK x_a6kL)
 
-liftF "playChannel" "Mix_PlayChannel_helper"
-  [t|Channel -> Ptr Chunk -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_PlayChannel_helper" playChannel' :: Channel -> Ptr Chunk -> CInt -> IO CInt
+{-# INLINE playChannel #-}
+playChannel x_a6lU x_a6lV x_a6lW = liftIO (playChannel' x_a6lU x_a6lV x_a6lW)
 
-liftF "playChannelTimed" "Mix_PlayChannelTimed"
-  [t|Channel -> Ptr Chunk -> CInt -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_PlayChannelTimed" playChannelTimed' :: Channel -> Ptr Chunk -> CInt -> CInt -> IO CInt
+{-# INLINE playChannelTimed #-}
+playChannelTimed x_a6ne x_a6nf x_a6ng x_a6nh = liftIO (playChannelTimed' x_a6ne x_a6nf x_a6ng x_a6nh)
 
-liftF "fadeInChannel" "Mix_FadeInChannel_helper"
-  [t|Channel -> Ptr Chunk -> CInt -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeInChannel_helper" fadeInChannel' :: Channel -> Ptr Chunk -> CInt -> CInt -> IO CInt
+{-# INLINE fadeInChannel #-}
+fadeInChannel x_a6oA x_a6oB x_a6oC x_a6oD = liftIO (fadeInChannel' x_a6oA x_a6oB x_a6oC x_a6oD)
 
-liftF "fadeInChannelTimed" "Mix_FadeInChannelTimed"
-  [t|Channel -> Ptr Chunk -> CInt -> CInt -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeInChannelTimed" fadeInChannelTimed' :: Channel -> Ptr Chunk -> CInt -> CInt -> CInt -> IO CInt
+{-# INLINE fadeInChannelTimed #-}
+fadeInChannelTimed x_a6q3 x_a6q4 x_a6q5 x_a6q6 x_a6q7 = liftIO (fadeInChannelTimed' x_a6q3 x_a6q4 x_a6q5 x_a6q6 x_a6q7)
 
-liftF "pause" "Mix_Pause"
-  [t|Channel -> IO ()|]
+foreign import ccall safe "static Mix_Pause" pause' :: Channel -> IO ()
+{-# INLINE pause #-}
+pause x_a6qX = liftIO (pause' x_a6qX)
 
-liftF "resume" "Mix_Resume"
-  [t|Channel -> IO ()|]
+foreign import ccall safe "static Mix_Resume" resume' :: Channel -> IO ()
+{-# INLINE resume #-}
+resume x_a6rI = liftIO (resume' x_a6rI)
 
-liftF "haltChannel" "Mix_HaltChannel"
-  [t|Channel -> IO CInt|]
+foreign import ccall safe "static Mix_HaltChannel" haltChannel' :: Channel -> IO CInt
+{-# INLINE haltChannel #-}
+haltChannel x_a6sw = liftIO (haltChannel' x_a6sw)
 
-liftF "expireChannel" "Mix_ExpireChannel"
-  [t|Channel -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_ExpireChannel" expireChannel' :: Channel -> CInt -> IO CInt
+{-# INLINE expireChannel #-}
+expireChannel x_a6tr x_a6ts = liftIO (expireChannel' x_a6tr x_a6ts)
 
-liftF "fadeOutChannel" "Mix_FadeOutChannel"
-  [t|Channel -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeOutChannel" fadeOutChannel' :: Channel -> CInt -> IO CInt
+{-# INLINE fadeOutChannel #-}
+fadeOutChannel x_a6uo x_a6up = liftIO (fadeOutChannel' x_a6uo x_a6up)
 
 foreign import ccall "wrapper"
   wrapChannelCallback :: (Channel -> IO ()) -> IO (FunPtr (Channel -> IO ()))
 
-liftF "channelFinished" "Mix_ChannelFinished"
-  [t|FunPtr (Channel -> IO ()) -> IO ()|]
+foreign import ccall safe "static Mix_ChannelFinished" channelFinished' :: FunPtr (Channel -> IO ()) -> IO ()
+{-# INLINE channelFinished #-}
+channelFinished x_a6vr = liftIO (channelFinished' x_a6vr)
 
-liftF "playing" "Mix_Playing"
-  [t|Channel -> IO CInt|]
+foreign import ccall safe "static Mix_Playing" playing' :: Channel -> IO CInt
+{-# INLINE playing #-}
+playing x_a6wm = liftIO (playing' x_a6wm)
 
-liftF "paused" "Mix_Paused"
-  [t|Channel -> IO CInt|]
+foreign import ccall safe "static Mix_Paused" paused' :: Channel -> IO CInt
+{-# INLINE paused #-}
+paused x_a6xa = liftIO (paused' x_a6xa)
 
 type Fading = (#type Mix_Fading)
 
@@ -336,63 +374,80 @@ pattern NO_FADING  = (#const MIX_NO_FADING)
 pattern FADING_IN  = (#const MIX_FADING_IN)
 pattern FADING_OUT = (#const MIX_FADING_OUT)
 
-liftF "fadingChannel" "Mix_FadingChannel"
-  [t|Channel -> IO Fading|]
+foreign import ccall safe "static Mix_FadingChannel" fadingChannel' :: Channel -> IO Fading
+{-# INLINE fadingChannel #-}
+fadingChannel x_a6xY = liftIO (fadingChannel' x_a6xY)
 
-liftF "getChunk" "Mix_GetChunk"
-  [t|Channel -> IO (Ptr Chunk)|]
+foreign import ccall safe "static Mix_GetChunk" getChunk' :: Channel -> IO (Ptr Chunk)
+{-# INLINE getChunk #-}
+getChunk x_a6yS = liftIO (getChunk' x_a6yS)
 
 -- 4.4 Groups
 
-liftF "reserveChannels" "Mix_ReserveChannels"
-  [t|CInt -> IO CInt|]
+foreign import ccall safe "static Mix_ReserveChannels" reserveChannels' :: CInt -> IO CInt
+{-# INLINE reserveChannels #-}
+reserveChannels x_a6zH = liftIO (reserveChannels' x_a6zH)
 
 type Tag = CInt
 
-liftF "groupChannel" "Mix_GroupChannel"
-  [t|Channel -> Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupChannel" groupChannel' :: Channel -> Tag -> IO CInt
+{-# INLINE groupChannel #-}
+groupChannel x_a6AC x_a6AD = liftIO (groupChannel' x_a6AC x_a6AD)
 
-liftF "groupChannels" "Mix_GroupChannels"
-  [t|Channel -> Channel -> Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupChannels" groupChannels' :: Channel -> Channel -> Tag -> IO CInt
+{-# INLINE groupChannels #-}
+groupChannels x_a6BG x_a6BH x_a6BI = liftIO (groupChannels' x_a6BG x_a6BH x_a6BI)
 
-liftF "groupCount" "Mix_GroupCount"
-  [t|Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupCount" groupCount' :: Tag -> IO CInt
+{-# INLINE groupCount #-}
+groupCount x_a6Cy = liftIO (groupCount' x_a6Cy)
 
-liftF "groupAvailable" "Mix_GroupAvailable"
-  [t|Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupAvailable" groupAvailable' :: Tag -> IO CInt
+{-# INLINE groupAvailable #-}
+groupAvailable x_a6Dm = liftIO (groupAvailable' x_a6Dm)
 
-liftF "groupOldest" "Mix_GroupOldest"
-  [t|Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupOldest" groupOldest' :: Tag -> IO CInt
+{-# INLINE groupOldest #-}
+groupOldest x_a6Ea = liftIO (groupOldest' x_a6Ea)
 
-liftF "groupNewer" "Mix_GroupNewer"
-  [t|Tag -> IO CInt|]
+foreign import ccall safe "static Mix_GroupNewer" groupNewer' :: Tag -> IO CInt
+{-# INLINE groupNewer #-}
+groupNewer x_a6EY = liftIO (groupNewer' x_a6EY)
 
-liftF "fadeOutGroup" "Mix_FadeOutGroup"
-  [t|Tag -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeOutGroup" fadeOutGroup' :: Tag -> CInt -> IO CInt
+{-# INLINE fadeOutGroup #-}
+fadeOutGroup x_a6FT x_a6FU = liftIO (fadeOutGroup' x_a6FT x_a6FU)
 
-liftF "haltGroup" "Mix_HaltGroup"
-  [t|Tag -> IO CInt|]
+foreign import ccall safe "static Mix_HaltGroup" haltGroup' :: Tag -> IO CInt
+{-# INLINE haltGroup #-}
+haltGroup x_a6GJ = liftIO (haltGroup' x_a6GJ)
 
 -- 4.5 Music
 
-liftF "getNumMusicDecoders" "Mix_GetNumMusicDecoders"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_GetNumMusicDecoders" getNumMusicDecoders' :: IO CInt
+{-# INLINE getNumMusicDecoders #-}
+getNumMusicDecoders :: forall m_a6Hq. MonadIO m_a6Hq => m_a6Hq CInt
+getNumMusicDecoders = liftIO getNumMusicDecoders'
 
-liftF "getMusicDecoder" "Mix_GetMusicDecoder"
-  [t|CInt -> IO CString|]
+foreign import ccall safe "static Mix_GetMusicDecoder" getMusicDecoder' :: CInt -> IO CString
+{-# INLINE getMusicDecoder #-}
+getMusicDecoder x_a6Id = liftIO (getMusicDecoder' x_a6Id)
 
 data Music
 
-liftF "loadMUS" "Mix_LoadMUS"
-  [t|CString -> IO (Ptr Music)|]
+foreign import ccall safe "static Mix_LoadMUS" loadMUS' :: CString -> IO (Ptr Music)
+{-# INLINE loadMUS #-}
+loadMUS x_a6J7 = liftIO (loadMUS' x_a6J7)
 
-liftF "loadMUS_RW" "Mix_LoadMUS_RW"
-  [t|Ptr RWops -> CInt -> IO (Ptr Music)|]
+foreign import ccall safe "static Mix_LoadMUS_RW" loadMUS_RW' :: Ptr RWops -> CInt -> IO (Ptr Music)
+{-# INLINE loadMUS_RW #-}
+loadMUS_RW x_a6Kf x_a6Kg = liftIO (loadMUS_RW' x_a6Kf x_a6Kg)
 
 type MusicType = (#type Mix_MusicType)
 
-liftF "loadMUSType_RW" "Mix_LoadMUSType_RW"
-  [t|Ptr RWops -> MusicType -> CInt -> IO (Ptr Music)|]
+foreign import ccall safe "static Mix_LoadMUSType_RW" loadMUSType_RW' :: Ptr RWops -> MusicType -> CInt -> IO (Ptr Music)
+{-# INLINE loadMUSType_RW #-}
+loadMUSType_RW x_a6Lx x_a6Ly x_a6Lz = liftIO (loadMUSType_RW' x_a6Lx x_a6Ly x_a6Lz)
 
 pattern MUS_NONE    = (#const MUS_NONE)
 pattern MUS_CMD     = (#const MUS_CMD)
@@ -405,65 +460,92 @@ pattern MUS_MP3_MAD = (#const MUS_MP3_MAD)
 pattern MUS_FLAC    = (#const MUS_FLAC)
 pattern MUS_MODPLUG = (#const MUS_MODPLUG)
 
-liftF "freeMusic" "Mix_FreeMusic"
-  [t|Ptr Music -> IO ()|]
+foreign import ccall safe "static Mix_FreeMusic" freeMusic' :: Ptr Music -> IO ()
+{-# INLINE freeMusic #-}
+freeMusic x_a6Mu = liftIO (freeMusic' x_a6Mu)
 
-liftF "playMusic" "Mix_PlayMusic"
-  [t|Ptr Music -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_PlayMusic" playMusic' :: Ptr Music -> CInt -> IO CInt
+{-# INLINE playMusic #-}
+playMusic x_a6Nw x_a6Nx = liftIO (playMusic' x_a6Nw x_a6Nx)
 
-liftF "fadeInMusic" "Mix_FadeInMusic"
-  [t|Ptr Music -> CInt -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeInMusic" fadeInMusic' :: Ptr Music -> CInt -> CInt -> IO CInt
+{-# INLINE fadeInMusic #-}
+fadeInMusic x_a6OH x_a6OI x_a6OJ = liftIO (fadeInMusic' x_a6OH x_a6OI x_a6OJ)
 
-liftF "fadeInMusicPos" "Mix_FadeInMusicPos"
-  [t|Ptr Music -> CInt -> CInt -> CDouble -> IO CInt|]
+foreign import ccall safe "static Mix_FadeInMusicPos" fadeInMusicPos' :: Ptr Music -> CInt -> CInt -> CDouble -> IO CInt
+{-# INLINE fadeInMusicPos #-}
+fadeInMusicPos x_a6Q1 x_a6Q2 x_a6Q3 x_a6Q4 = liftIO (fadeInMusicPos' x_a6Q1 x_a6Q2 x_a6Q3 x_a6Q4)
 
-liftF "hookMusic" "Mix_HookMusic"
-  [t|FunPtr (Ptr () -> Ptr Word8 -> CInt -> IO ()) -> Ptr () -> IO ()|]
+foreign import ccall safe "static Mix_HookMusic" hookMusic' :: FunPtr (Ptr () -> Ptr Word8 -> CInt -> IO ()) -> Ptr () -> IO ()
+{-# INLINE hookMusic #-}
+hookMusic x_a6RK x_a6RL = liftIO (hookMusic' x_a6RK x_a6RL)
 
-liftF "volumeMusic" "Mix_VolumeMusic"
-  [t|CInt -> IO CInt|]
+foreign import ccall safe "static Mix_VolumeMusic" volumeMusic' :: CInt -> IO CInt
+{-# INLINE volumeMusic #-}
+volumeMusic x_a6SF = liftIO (volumeMusic' x_a6SF)
 
-liftF "pauseMusic" "Mix_PauseMusic"
-  [t|IO ()|]
+foreign import ccall safe "static Mix_PauseMusic" pauseMusic' :: IO ()
+{-# INLINE pauseMusic #-}
+pauseMusic :: forall m_a6Tj. MonadIO m_a6Tj => m_a6Tj ()
+pauseMusic = liftIO pauseMusic'
 
-liftF "resumeMusic" "Mix_ResumeMusic"
-  [t|IO ()|]
+foreign import ccall safe "static Mix_ResumeMusic" resumeMusic' :: IO ()
+{-# INLINE resumeMusic #-}
+resumeMusic :: forall m_a6TW. MonadIO m_a6TW => m_a6TW ()
+resumeMusic = liftIO resumeMusic'
 
-liftF "rewindMusic" "Mix_RewindMusic"
-  [t|IO ()|]
+foreign import ccall safe "static Mix_RewindMusic" rewindMusic' :: IO ()
+{-# INLINE rewindMusic #-}
+rewindMusic :: forall m_a6Uz. MonadIO m_a6Uz => m_a6Uz ()
+rewindMusic = liftIO rewindMusic'
 
-liftF "setMusicPosition" "Mix_SetMusicPosition"
-  [t|CDouble -> IO CInt|]
+foreign import ccall safe "static Mix_SetMusicPosition" setMusicPosition' :: CDouble -> IO CInt
+{-# INLINE setMusicPosition #-}
+setMusicPosition x_a6Vm = liftIO (setMusicPosition' x_a6Vm)
 
-liftF "setMusicCMD" "Mix_SetMusicCMD"
-  [t|CString -> IO CInt|]
+foreign import ccall safe "static Mix_SetMusicCMD" setMusicCMD' :: CString -> IO CInt
+{-# INLINE setMusicCMD #-}
+setMusicCMD x_a6Wa = liftIO (setMusicCMD' x_a6Wa)
 
-liftF "haltMusic" "Mix_HaltMusic"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_HaltMusic" haltMusic' :: IO CInt
+{-# INLINE haltMusic #-}
+haltMusic :: forall m_a6WR. MonadIO m_a6WR => m_a6WR CInt
+haltMusic = liftIO haltMusic'
 
-liftF "fadeOutMusic" "Mix_FadeOutMusic"
-  [t|CInt -> IO CInt|]
+foreign import ccall safe "static Mix_FadeOutMusic" fadeOutMusic' :: CInt -> IO CInt
+{-# INLINE fadeOutMusic #-}
+fadeOutMusic x_a6XE = liftIO (fadeOutMusic' x_a6XE)
 
 foreign import ccall "wrapper"
   wrapMusicCallback :: IO () -> IO (FunPtr (IO ()))
 
-liftF "hookMusicFinished" "Mix_HookMusicFinished"
-  [t|FunPtr (IO ()) -> IO ()|]
+foreign import ccall safe "static Mix_HookMusicFinished" hookMusicFinished' :: FunPtr (IO ()) -> IO ()
+{-# INLINE hookMusicFinished #-}
+hookMusicFinished x_a6Yy = liftIO (hookMusicFinished' x_a6Yy)
 
-liftF "getMusicType" "Mix_GetMusicType"
-  [t|Ptr Music -> IO MusicType|]
+foreign import ccall safe "static Mix_GetMusicType" getMusicType' :: Ptr Music -> IO MusicType
+{-# INLINE getMusicType #-}
+getMusicType x_a6Zu = liftIO (getMusicType' x_a6Zu)
 
-liftF "playingMusic" "Mix_PlayingMusic"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_PlayingMusic" playingMusic' :: IO CInt
+{-# INLINE playingMusic #-}
+playingMusic :: forall m_a70c. MonadIO m_a70c => m_a70c CInt
+playingMusic = liftIO playingMusic'
 
-liftF "pausedMusic" "Mix_PausedMusic"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_PausedMusic" pausedMusic' :: IO CInt
+{-# INLINE pausedMusic #-}
+pausedMusic :: forall m_a70S. MonadIO m_a70S => m_a70S CInt
+pausedMusic = liftIO pausedMusic'
 
-liftF "fadingMusic" "Mix_FadingChannel"
-  [t|IO Fading|]
+foreign import ccall safe "static Mix_FadingChannel" fadingMusic' :: IO Fading
+{-# INLINE fadingMusic #-}
+fadingMusic :: forall m_a71y. MonadIO m_a71y => m_a71y Fading
+fadingMusic = liftIO fadingMusic'
 
-liftF "getMusicHookData" "Mix_GetMusicHookData"
-  [t|IO (Ptr ())|]
+foreign import ccall safe "static Mix_GetMusicHookData" getMusicHookData' :: IO (Ptr ())
+{-# INLINE getMusicHookData #-}
+getMusicHookData :: forall m_a72h. MonadIO m_a72h => m_a72h (Ptr ())
+getMusicHookData = liftIO getMusicHookData'
 
 -- 4.6 Effects
 
@@ -479,43 +561,58 @@ type EffectFinished = Channel -> Ptr () -> IO ()
 foreign import ccall "wrapper"
   wrapEffectFinished :: EffectFinished -> IO (FunPtr EffectFinished)
 
-liftF "registerEffect" "Mix_RegisterEffect"
-  [t|Channel -> FunPtr Effect -> FunPtr EffectFinished -> Ptr () -> IO CInt|]
+foreign import ccall safe "static Mix_RegisterEffect" registerEffect' :: Channel -> FunPtr Effect -> FunPtr EffectFinished -> Ptr () -> IO CInt
+{-# INLINE registerEffect #-}
+registerEffect x_a73G x_a73H x_a73I x_a73J = liftIO (registerEffect' x_a73G x_a73H x_a73I x_a73J)
 
-liftF "unregisterEffect" "Mix_UnregisterEffect"
-  [t|Channel -> FunPtr Effect -> IO CInt|]
+foreign import ccall safe "static Mix_UnregisterEffect" unregisterEffect' :: Channel -> FunPtr Effect -> IO CInt
+{-# INLINE unregisterEffect #-}
+unregisterEffect x_a74Q x_a74R = liftIO (unregisterEffect' x_a74Q x_a74R)
 
-liftF "unregisterAllEffects" "Mix_UnregisterAllEffects"
-  [t|Channel -> IO CInt|]
+foreign import ccall safe "static Mix_UnregisterAllEffects" unregisterAllEffects' :: Channel -> IO CInt
+{-# INLINE unregisterAllEffects #-}
+unregisterAllEffects x_a75H = liftIO (unregisterAllEffects' x_a75H)
 
-liftF "setPostMix" "Mix_SetPostMix"
-  [t|FunPtr (Ptr () -> Ptr Word8 -> CInt -> IO ()) -> Ptr () -> IO ()|]
+foreign import ccall safe "static Mix_SetPostMix" setPostMix' :: FunPtr (Ptr () -> Ptr Word8 -> CInt -> IO ()) -> Ptr () -> IO ()
+{-# INLINE setPostMix #-}
+setPostMix x_a77f x_a77g = liftIO (setPostMix' x_a77f x_a77g)
 
-liftF "setPanning" "Mix_SetPanning"
-  [t|Channel -> Word8 -> Word8 -> IO CInt|]
+foreign import ccall safe "static Mix_SetPanning" setPanning' :: Channel -> Word8 -> Word8 -> IO CInt
+{-# INLINE setPanning #-}
+setPanning x_a78o x_a78p x_a78q = liftIO (setPanning' x_a78o x_a78p x_a78q)
 
-liftF "setDistance" "Mix_SetDistance"
-  [t|Channel -> Word8 -> IO CInt|]
+foreign import ccall safe "static Mix_SetDistance" setDistance' :: Channel -> Word8 -> IO CInt
+{-# INLINE setDistance #-}
+setDistance x_a79n x_a79o = liftIO (setDistance' x_a79n x_a79o)
 
-liftF "setPosition" "Mix_SetPosition"
-  [t|Channel -> Int16 -> Word8 -> IO CInt|]
+foreign import ccall safe "static Mix_SetPosition" setPosition' :: Channel -> Int16 -> Word8 -> IO CInt
+{-# INLINE setPosition #-}
+setPosition x_a7ar x_a7as x_a7at = liftIO (setPosition' x_a7ar x_a7as x_a7at)
 
-liftF "setReverseStereo" "Mix_SetReverseStereo"
-  [t|Channel -> CInt -> IO CInt|]
+foreign import ccall safe "static Mix_SetReverseStereo" setReverseStereo' :: Channel -> CInt -> IO CInt
+{-# INLINE setReverseStereo #-}
+setReverseStereo x_a7bu x_a7bv = liftIO (setReverseStereo' x_a7bu x_a7bv)
 
 -- ?.? Not documented
 
-liftF "setSynchroValue" "Mix_SetSynchroValue"
-  [t|CInt -> IO CInt|]
+foreign import ccall safe "static Mix_SetSynchroValue" setSynchroValue' :: CInt -> IO CInt
+{-# INLINE setSynchroValue #-}
+setSynchroValue x_a7ck = liftIO (setSynchroValue' x_a7ck)
 
-liftF "getSynchroValue" "Mix_GetSynchroValue"
-  [t|IO CInt|]
+foreign import ccall safe "static Mix_GetSynchroValue" getSynchroValue' :: IO CInt
+{-# INLINE getSynchroValue #-}
+getSynchroValue :: forall m_a7d1. MonadIO m_a7d1 => m_a7d1 CInt
+getSynchroValue = liftIO getSynchroValue'
 
-liftF "setSoundFonts" "Mix_SetSoundFonts"
-  [t|Ptr CString -> IO CInt|]
+foreign import ccall safe "static Mix_SetSoundFonts" setSoundFonts' :: Ptr CString -> IO CInt
+{-# INLINE setSoundFonts #-}
+setSoundFonts x_a7dU = liftIO (setSoundFonts' x_a7dU)
 
-liftF "getSoundFonts" "Mix_GetSoundFonts"
-  [t|IO (Ptr CString)|]
+foreign import ccall safe "static Mix_GetSoundFonts" getSoundFonts' :: IO (Ptr CString)
+{-# INLINE getSoundFonts #-}
+getSoundFonts :: forall m_a7eI. MonadIO m_a7eI => m_a7eI (Ptr CString)
+getSoundFonts = liftIO getSoundFonts'
 
-liftF "eachSoundFont" "Mix_EachSoundFont"
-  [t|FunPtr (CString -> Ptr () -> IO CInt) -> Ptr () -> IO CInt|]
+foreign import ccall safe "static Mix_EachSoundFont" eachSoundFont' :: FunPtr (CString -> Ptr () -> IO CInt) -> Ptr () -> IO CInt
+{-# INLINE eachSoundFont #-}
+eachSoundFont x_a7ga x_a7gb = liftIO (eachSoundFont' x_a7ga x_a7gb)
